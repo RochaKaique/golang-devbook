@@ -1,9 +1,12 @@
 package models
 
 import (
+	"api/src/security"
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/badoux/checkmail"
 )
 
 // User representa um usuário utilizando a rede social
@@ -21,7 +24,9 @@ func (user *User) Prepare(step string) error {
 		return error
 	}
 
-	user.format()
+	if error := user.format(step); error != nil {
+		return error
+	}
 	return nil
 }
 
@@ -38,6 +43,10 @@ func (user *User) validate(step string) error {
 		return errors.New("O e-mail é obrigatorio e não pode estar em branco")
 	}
 
+	if error := checkmail.ValidateFormat(user.Email); error != nil {
+		return errors.New("Formato de e-mail inválido")
+	}
+
 	if step == "cadastro" && user.Password == "" {
 		return errors.New("A senha é obrigatorio e não pode estar em branco")
 	}
@@ -45,8 +54,19 @@ func (user *User) validate(step string) error {
 	return nil
 }
 
-func (user *User) format() {
+func (user *User) format(step string) error {
 	user.Name = strings.TrimSpace(user.Name)
 	user.Email = strings.TrimSpace(user.Email)
 	user.Nick = strings.TrimSpace(user.Nick)
+
+	if step == "cadastro" {
+		passwordHash, error := security.Hash(user.Password)
+		if error != nil {
+			return errors.New("Erro ao criptografar senha")
+		}
+
+		user.Password = string(passwordHash)
+	}
+
+	return nil
 }
