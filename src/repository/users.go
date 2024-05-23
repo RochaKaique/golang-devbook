@@ -111,3 +111,23 @@ func (repo Users) Delete(id string) error {
 
 	return nil
 }
+
+func (repo Users) FindByEmailForLogin(email string) (models.User, error) {
+	line, error := repo.db.Query("SELECT id, senha FROM users WHERE email = ?", email)
+	if error != nil {
+		return models.User{}, error
+	}
+	defer line.Close()
+
+	var user models.User
+	if line.Next() {
+		if error = line.Scan(
+			&user.ID,
+			&user.Password,
+		); error != nil {
+			return models.User{}, error
+		}
+	}
+
+	return user, nil
+}
