@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"api/src/authentication"
 	database "api/src/db"
 	"api/src/models"
 	"api/src/repository"
 	"api/src/responses"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -116,6 +118,17 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIDFromToken, error := authentication.ExtractUserID(r)
+	if error != nil {
+		responses.Error(w, http.StatusUnauthorized, error)
+		return
+	}
+
+	if ID != userIDFromToken {
+		responses.Error(w, http.StatusForbidden, errors.New("Não é possivel atualizar um usuário que não seja o seu"))
+		return
+	}
+
 	db, error := database.Connect()
 	if error != nil {
 		responses.Error(w, http.StatusInternalServerError, error)
@@ -136,6 +149,17 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 func DeleteUser(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	ID := params["id"]
+
+	userIDFromToken, error := authentication.ExtractUserID(r)
+	if error != nil {
+		responses.Error(w, http.StatusUnauthorized, error)
+		return
+	}
+
+	if ID != userIDFromToken {
+		responses.Error(w, http.StatusForbidden, errors.New("Não é possivel deletar um usuário que não seja o seu"))
+		return
+	}
 
 	db, error := database.Connect()
 	if error != nil {
