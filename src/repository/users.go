@@ -131,3 +131,33 @@ func (repo Users) FindByEmailForLogin(email string) (models.User, error) {
 
 	return user, nil
 }
+
+func (repo Users) Follow(userId string, followerId string) error {
+	statement, error := repo.db.Prepare("INSERT IGNORE INTO follows (user_id, follower_id) VALUES (?,?)")
+	
+	if error != nil {
+		return error
+	}
+	defer statement.Close()
+	
+	if _, error = statement.Exec(userId, followerId); error != nil {
+		return error
+	}
+
+	return nil
+}
+
+func (repo Users) Unfollow(userId string, followerId string) error {
+	statement, error := repo.db.Prepare("DELETE FROM follows WHERE user_id = ? AND follower_id = ?")
+	
+	if error != nil {
+		return error
+	}
+	defer statement.Close()
+	
+	if _, error = statement.Exec(userId, followerId); error != nil {
+		return error
+	}
+
+	return nil
+}
