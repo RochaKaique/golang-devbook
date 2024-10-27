@@ -210,6 +210,7 @@ func FollowUser (w http.ResponseWriter, r *http.Request) {
 	responses.JSON(w, http.StatusNoContent, nil)
 }
 
+// UnfollowUser permite que um usuário de seguir outro usuário
 func UnfollowUser (w http.ResponseWriter, r *http.Request) {
 	followerID, error := authentication.ExtractUserID(r)
 	if error != nil {
@@ -219,6 +220,11 @@ func UnfollowUser (w http.ResponseWriter, r *http.Request) {
 
 	params := mux.Vars(r)
 	userID := params["userId"]
+
+	if userID == followerID {
+		responses.Error(w, http.StatusForbidden, errors.New("Não é possivel parar de segur você mesmo"))
+		return
+	}
 
 	db, error := database.Connect()
 	if error != nil {
@@ -234,4 +240,51 @@ func UnfollowUser (w http.ResponseWriter, r *http.Request) {
 	}
 
 	responses.JSON(w, http.StatusNoContent, nil)
+}
+
+// FindFollowers tras todos os seguidores de um usuário
+func FindFollowers(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["userID"]
+
+	db, error := database.Connect()
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+	defer db.Close()
+
+	repository := repository.NewUsersRepository(db)
+	followers, error := repository.FindFollowers(userId)
+
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+
+	responses.JSON(w, http.StatusOK, followers)
+}
+
+// FindFollowing trás todos as pessoas que um usuário segue
+func FindFollowig(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userId := params["userID"]
+
+	db, error := database.Connect()
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+	defer db.Close()
+
+	repository := repository.NewUsersRepository(db)
+	following, error := repository.FindFollowing(userId)
+
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+
+	responses.JSON(w, http.StatusOK, following)
+
 }
