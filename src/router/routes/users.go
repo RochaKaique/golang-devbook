@@ -60,4 +60,10 @@ var userRoutes = []Route{
 		Function: controllers.FindFollowig,
 		AuthRequired: true,
 	},
+	{
+		URI: "/usuarios/{userID}/atualizar-senha",
+		Method: http.MethodPost,
+		Function: controllers.UpdatePassword,
+		AuthRequired: true,
+	},
 }

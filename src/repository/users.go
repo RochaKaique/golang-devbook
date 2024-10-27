@@ -220,3 +220,36 @@ func (repo Users) FindFollowing(userId string) ([]models.User, error) {
 
 	return users, nil
 }
+
+func (repo Users) FindPassword(userId string) (string, error) {
+	line, error := repo.db.Query("SELECT senha from users WHERE id = ?", userId)
+	if error != nil {
+		return "", error
+	}
+	defer line.Close()
+
+	var user models.User
+
+	if line.Next() {
+		if error = line.Scan(&user.Password); error != nil {
+			return "", error
+		}
+	}
+
+	return user.Password, nil
+}
+
+func (repo Users) UpdatePassword(userId, hashedPassword string) error {
+	statement, error := repo.db.Prepare("UPDATE users SET senha = ? WHERE id = ?")
+	if error != nil {
+		return error
+	}
+	defer statement.Close()
+
+
+	if _, error = statement.Exec(hashedPassword, userId); error != nil {
+		return error
+	}
+
+	return nil
+}

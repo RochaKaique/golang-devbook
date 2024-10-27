@@ -6,6 +6,7 @@ import (
 	"api/src/models"
 	"api/src/repository"
 	"api/src/responses"
+	"api/src/security"
 	"encoding/json"
 	"errors"
 	"io"
@@ -286,5 +287,62 @@ func FindFollowig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responses.JSON(w, http.StatusOK, following)
-
 }
+
+// UpdatePassword permite o usuário atualizar sua senha
+func UpdatePassword(w http.ResponseWriter, r *http.Request) {
+	loggedUserId, error := authentication.ExtractUserID(r)
+	if error != nil {
+		responses.Error(w, http.StatusUnauthorized, error)
+		return
+	}
+
+	params := mux.Vars(r)
+	paramUserId := params["userID"]
+
+	if loggedUserId != paramUserId {
+		responses.Error(w, http.StatusForbidden, errors.New("Não é possivel atualizar a senha de outro usuário"))
+		return
+	}
+
+	body, error := io.ReadAll(r.Body)
+
+	var password models.Password
+	if error = json.Unmarshal(body, &password); error != nil {
+		responses.Error(w, http.StatusBadRequest, error)
+		return
+	}
+
+	db, error := database.Connect()
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+	defer db.Close()
+
+	repository := repository.NewUsersRepository(db)
+	passwordInDb, error := repository.FindPassword(loggedUserId)
+	if error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+
+	if error = security.CheckPassword(passwordInDb, password.ActualPassword); error != nil {
+		responses.Error(w, http.StatusUnauthorized, errors.New("A senha atual não condiz com a senha que está salva no banco"))
+		return
+	}
+
+	hashedPassword, error := security.Hash(password.NewPassword)
+	if error != nil {
+		responses.Error(w, http.StatusBadRequest, error)
+		return
+	}
+
+	if error = repository.UpdatePassword(loggedUserId, string(hashedPassword)); error != nil {
+		responses.Error(w, http.StatusInternalServerError, error)
+		return
+	}
+
+	responses.JSON(w, http.StatusNoContent, nil)
+}
+
